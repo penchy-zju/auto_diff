@@ -1,3 +1,5 @@
+#!/usr/bin/python
+# -*- coding: UTF-8 -*-
 import numpy as np
 
 
@@ -308,7 +310,20 @@ class Executor:
         node_to_val_map = dict(feed_dict)
         # Traverse graph in topological sort order and compute values for all nodes.
         topo_order = find_topo_sort(self.eval_node_list)
+
         # TODO: Your code here
+        for node in topo_order:
+            if isinstance(node.op, PlaceholderOp):
+                continue
+
+            # 获取该节点的输入值
+            vals = [node_to_val_map[n] for n in node.inputs]
+
+            # 正向传播计算该节点的输出值
+            compute_val = node.op.compute(node, vals)
+            
+            # 将该节点的计算值存储到字典中，以备作为后续节点的输入值进行计算
+            node_to_val_map[node] = compute_val if isinstance(compute_val, np.ndarray) else np.array(compute_val)
 
         # Collect node values.
         node_val_results = [node_to_val_map[node] for node in self.eval_node_list]
@@ -341,6 +356,27 @@ def gradients(output_node, node_list):
     reverse_topo_order = reversed(find_topo_sort([output_node]))
 
     # TODO: Your code here
+    for node in reverse_topo_order:
+        # 将所有后续节点传过来的梯度加起来
+        grad = sum_node_list(node_to_output_grads_list[node])
+
+        # 将该节点的梯度存起来
+        node_to_output_grad[node] = grad
+
+        # 计算该节点输入节点的梯度，因为大多数的op最多两个参数，所以这里的输入节点的梯度数量一般不大于2
+        input_grads = node.op.gradient(node, grad)
+
+        # 遍历该节点的输入，一般就两个输入
+        for i in range(len(node.inputs)):
+            input_node = node.inputs[i]
+
+            # 取出输入节点的梯度，如果有其它节点传回来的梯度则取出来，否则返回空
+            this_input_node_grads_list = node_to_output_grads_list.get(input_node, [])
+
+            # 将父节点传递给该输入节点的梯度添加到list中
+            this_input_node_grads_list.append(input_grads[i])
+
+            node_to_output_grads_list[input_node] = this_input_node_grads_list
 
     # Collect results for gradients requested.
     grad_node_list = [node_to_output_grad[node] for node in node_list]

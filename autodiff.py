@@ -194,8 +194,8 @@ class MatMulOp(Op):
         ----------
         node_A: lhs of matrix multiply
         node_B: rhs of matrix multiply
-        trans_A: whether to transpose node_A
-        trans_B: whether to transpose node_B
+        trans_A: boolean, whether to transpose node_A
+        trans_B: boolean, whether to transpose node_B
 
         Returns
         -------
@@ -210,14 +210,27 @@ class MatMulOp(Op):
 
     def compute(self, node, input_vals):
         """Given values of input nodes, return result of matrix multiplication."""
+
         # TODO: Your code here
+        assert len(input_vals) == 2
+        mat_A = input_vals[0]
+        mat_B = input_vals[1]
+        if node.matmul_attr_trans_A is True:
+            mat_A = np.transpose(input_vals[0])
+        if node.matmul_attr_trans_B is True:
+            mat_B = np.transpose(input_vals[1])
+
+        return np.matmul(mat_A, mat_B)
 
     def gradient(self, node, output_grad):
         """Given gradient of multiply node, return gradient contributions to each input.
             
         Useful formula: if Y=AB, then dA=dY B^T, dB=A^T dY
         """
+
         # TODO: Your code here
+        return [matmul_op(output_grad, node.inputs[1], False, True),
+                matmul_op(node.inputs[0], output_grad, True, False)]
 
 
 class PlaceholderOp(Op):
